@@ -1,0 +1,38 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма компонентов — Device Service
+
+Container_Boundary(device_service, "Device Service") {
+
+    Component(api_controller, "API Controller", "Go / Gin", "Обрабатывает HTTP-запросы: CRUD устройств, отправка команд.")
+    Component(device_registry, "Device Registry", "Go", "Регистрация устройств, хранение метаданных, валидация конфигурации.")
+    Component(command_handler, "Device Command Handler", "Go", "Формирует и отправляет команды на устройства через соответствующий протокол.")
+    Component(plugin_manager, "Device Type Plugin Manager", "Go", "Расширяемая поддержка типов устройств. Определяет доступные команды и параметры для каждого типа.")
+    Component(event_publisher, "Event Publisher", "Go", "Публикует доменные события в Message Broker (device.registered, device.alert).")
+    Component(device_repo, "Device Repository", "Go / pgx", "Абстракция доступа к данным. CRUD-операции с таблицами устройств.")
+}
+
+ContainerDb(device_db, "Device DB", "PostgreSQL", "Устройства, типы, конфигурации.")
+ContainerQueue(message_broker, "Message Broker", "Kafka", "Асинхронный обмен событиями.")
+System_Ext(iot_devices, "IoT-устройства", "Датчики и исполнительные механизмы.")
+Container(api_gateway, "API Gateway", "Nginx / Kong", "Маршрутизация запросов.")
+Container(scenario_service, "Scenario Service", "Go", "Сервис сценариев автоматизации.")
+
+Rel(api_controller, device_registry, "Регистрация / получение устройств")
+Rel(api_controller, command_handler, "Отправка команд")
+Rel(device_registry, device_repo, "Сохранение / чтение")
+Rel(device_registry, plugin_manager, "Валидация типа и параметров")
+Rel(command_handler, plugin_manager, "Получение протокола и формата команды")
+Rel(device_registry, event_publisher, "Событие device.registered")
+Rel(command_handler, event_publisher, "Событие device.alert")
+
+Rel(api_gateway, api_controller, "REST-запросы", "HTTP")
+Rel(scenario_service, api_controller, "Команда устройству", "REST")
+Rel(command_handler, iot_devices, "Отправка команд", "MQTT/HTTP")
+Rel(device_repo, device_db, "SQL-запросы", "SQL/TCP")
+Rel(event_publisher, message_broker, "Публикация событий", "async")
+
+@enduml

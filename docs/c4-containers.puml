@@ -1,0 +1,76 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контейнеров системы «Тёплый дом» (To-Be)
+
+Person(user, "Пользователь", "Владелец дома. Управляет устройствами, просматривает телеметрию, настраивает сценарии.")
+Person(admin, "Администратор", "Управляет пользователями, мониторит состояние системы, настраивает типы устройств.")
+System_Ext(iot_devices, "IoT-устройства", "Датчики и исполнительные механизмы (отопление, освещение, ворота, камеры).")
+System_Ext(ext_channels, "Внешние каналы доставки", "SMTP-сервер, Push-сервис, SMS-шлюз.")
+
+System_Boundary(warmhouse, "Экосистема «Тёплый дом»") {
+
+    Container(web_app, "Web Application", "SPA, React", "Веб-интерфейс для пользователей.")
+    Container(admin_app, "Admin Panel", "SPA, React", "Панель администратора.")
+    Container(api_gateway, "API Gateway", "Nginx / Kong", "Единая точка входа. Маршрутизация, аутентификация, rate limiting.")
+    ContainerQueue(message_broker, "Message Broker", "Kafka", "Асинхронный обмен событиями между доменами.")
+
+    Boundary(domain_device, "Домен управления устройствами") {
+        Container(device_service, "Device Service", "Go", "Регистрация устройств, конфигурация, отправка команд. Расширяемая модель типов.")
+        ContainerDb(device_db, "Device DB", "PostgreSQL", "Устройства, типы, конфигурации.")
+    }
+
+    Boundary(domain_telemetry, "Домен мониторинга и телеметрии") {
+        Container(telemetry_service, "Telemetry Service", "Go", "Приём, хранение и выдача телеметрии с устройств.")
+        ContainerDb(telemetry_db, "Telemetry DB", "TimescaleDB", "Временные ряды телеметрии.")
+    }
+
+    Boundary(domain_scenario, "Домен сценариев автоматизации") {
+        Container(scenario_service, "Scenario Service", "Go", "Создание и выполнение пользовательских сценариев автоматизации.")
+        ContainerDb(scenario_db, "Scenario DB", "PostgreSQL", "Сценарии, правила, триггеры.")
+    }
+
+    Boundary(domain_user, "Домен управления пользователями") {
+        Container(user_service, "User Service", "Go", "Регистрация, аутентификация (JWT), профили, роли, управление домами.")
+        ContainerDb(user_db, "User DB", "PostgreSQL", "Пользователи, дома, роли.")
+    }
+
+    Boundary(domain_notification, "Домен уведомлений") {
+        Container(notification_service, "Notification Service", "Go", "Отправка уведомлений пользователям (push, email, SMS).")
+        ContainerDb(notification_db, "Notification DB", "PostgreSQL", "Шаблоны и история уведомлений.")
+    }
+}
+
+Rel(user, web_app, "Использует", "HTTPS")
+Rel(web_app, api_gateway, "Запросы к API", "HTTPS/REST")
+
+Rel(admin, admin_app, "Использует", "HTTPS")
+Rel(admin_app, api_gateway, "Запросы к API", "HTTPS/REST")
+
+Rel(api_gateway, user_service, "Аутентификация, профили", "REST")
+Rel(api_gateway, device_service, "Управление устройствами", "REST")
+Rel(api_gateway, telemetry_service, "Запрос телеметрии", "REST")
+Rel(api_gateway, scenario_service, "Управление сценариями", "REST")
+Rel(api_gateway, notification_service, "Настройки уведомлений", "REST")
+
+Rel(iot_devices, telemetry_service, "Отправляет показания", "MQTT/HTTP")
+Rel(device_service, iot_devices, "Отправляет команды", "MQTT/HTTP")
+
+Rel(user_service, user_db, "Читает/записывает", "SQL")
+Rel(device_service, device_db, "Читает/записывает", "SQL")
+Rel(telemetry_service, telemetry_db, "Читает/записывает", "SQL")
+Rel(scenario_service, scenario_db, "Читает/записывает", "SQL")
+Rel(notification_service, notification_db, "Читает/записывает", "SQL")
+
+Rel(telemetry_service, message_broker, "Публикует telemetry.received", "async")
+Rel(device_service, message_broker, "Публикует device.registered, device.alert", "async")
+Rel(scenario_service, message_broker, "Подписан на telemetry.received\nПубликует scenario.triggered", "async")
+Rel(notification_service, message_broker, "Подписан на scenario.triggered, device.alert", "async")
+
+Rel(scenario_service, device_service, "Отправляет команду устройству", "REST")
+
+Rel(notification_service, ext_channels, "Доставка уведомлений", "SMTP/HTTP")
+
+@enduml

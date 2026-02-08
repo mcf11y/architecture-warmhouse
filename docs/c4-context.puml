@@ -1,0 +1,21 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контекста системы «Тёплый дом» (As-Is)
+
+Person(user, "Пользователь", "Владелец дома. Просматривает температуру и управляет отоплением через веб-интерфейс.")
+Person(installer, "Специалист по установке", "Выезжает на объект для подключения датчиков к системе.")
+
+System(smarthome, "Smart Home System", "Монолитное приложение на Go (Gin). Обеспечивает управление отоплением и мониторинг температуры. REST API.")
+
+System_Ext(tempapi, "Temperature API", "Внешний сервис, предоставляющий текущие показания температуры с датчиков.")
+SystemDb(postgres, "PostgreSQL", "Хранит данные о зарегистрированных датчиках (таблица sensors).")
+
+Rel(user, smarthome, "Управляет отоплением, просматривает температуру", "HTTPS/REST")
+Rel(installer, smarthome, "Регистрирует датчики", "HTTPS/REST")
+Rel(smarthome, tempapi, "Запрашивает текущую температуру", "HTTP sync")
+Rel(smarthome, postgres, "Читает/записывает данные датчиков", "SQL/TCP")
+
+@enduml
