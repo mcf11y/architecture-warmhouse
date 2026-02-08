@@ -1,0 +1,402 @@
+openapi: 3.0.3
+info:
+  title: Device Service API
+  description: API для управления устройствами экосистемы «Тёплый дом»
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+
+paths:
+  /device-types:
+    get:
+      summary: Получение списка типов устройств
+      description: Возвращает список всех поддерживаемых типов устройств с описанием и схемами конфигурации.
+      operationId: getDeviceTypes
+      tags:
+        - Device Types
+      responses:
+        '200':
+          description: Список типов устройств
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceType'
+              example:
+                - id: 1
+                  name: "Отопление"
+                  description: "Управление системой отопления"
+                  protocol: "MQTT"
+                  config_schema:
+                    type: "object"
+                    properties:
+                      target_temperature:
+                        type: "number"
+                        description: "Целевая температура в °C"
+                      mode:
+                        type: "string"
+                        enum: ["auto", "manual"]
+                        description: "Режим работы"
+                - id: 2
+                  name: "Освещение"
+                  description: "Управление освещением"
+                  protocol: "MQTT"
+                  config_schema:
+                    type: "object"
+                    properties:
+                      brightness:
+                        type: "number"
+                        description: "Яркость (0-100)"
+                      color_temperature:
+                        type: "number"
+                        description: "Цветовая температура в Кельвинах"
+                - id: 3
+                  name: "Ворота"
+                  description: "Управление автоматическими воротами"
+                  protocol: "HTTP"
+                  config_schema:
+                    type: "object"
+                    properties:
+                      auto_close_timeout:
+                        type: "number"
+                        description: "Время автозакрытия в секундах"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/{id}:
+    get:
+      summary: Получение информации об устройстве
+      description: Возвращает полную информацию об устройстве по его идентификатору.
+      operationId: getDeviceById
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор устройства
+      responses:
+        '200':
+          description: Информация об устройстве
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 1
+                device_type_id: 2
+                house_id: 10
+                serial_number: "SN-HEAT-001"
+                name: "Отопление гостиная"
+                status: "active"
+                config:
+                  target_temperature: 22
+                  mode: "auto"
+                created_at: "2025-01-15T10:30:00Z"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Device not found"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices:
+    post:
+      summary: Регистрация нового устройства
+      description: Регистрирует новое устройство в системе и привязывает его к дому.
+      operationId: createDevice
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCreate'
+            example:
+              device_type_id: 2
+              house_id: 10
+              serial_number: "SN-HEAT-002"
+              name: "Отопление спальня"
+              config:
+                target_temperature: 20
+                mode: "manual"
+      responses:
+        '201':
+          description: Устройство успешно зарегистрировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 2
+                device_type_id: 2
+                house_id: 10
+                serial_number: "SN-HEAT-002"
+                name: "Отопление спальня"
+                status: "inactive"
+                config:
+                  target_temperature: 20
+                  mode: "manual"
+                created_at: "2025-02-01T14:00:00Z"
+        '400':
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "serial_number is required"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/{id}/status:
+    patch:
+      summary: Обновление состояния устройства
+      description: Обновляет статус устройства (active, inactive, error).
+      operationId: updateDeviceStatus
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceStatusUpdate'
+            example:
+              status: "active"
+      responses:
+        '200':
+          description: Состояние устройства обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                id: 1
+                device_type_id: 2
+                house_id: 10
+                serial_number: "SN-HEAT-001"
+                name: "Отопление гостиная"
+                status: "active"
+                config:
+                  target_temperature: 22
+                  mode: "auto"
+                created_at: "2025-01-15T10:30:00Z"
+        '400':
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid status value"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/{id}/commands:
+    post:
+      summary: Отправка команды устройству
+      description: Отправляет команду управления на устройство (например, включить отопление, открыть ворота).
+      operationId: sendDeviceCommand
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCommand'
+            example:
+              command: "set_temperature"
+              parameters:
+                target_temperature: 24
+      responses:
+        '200':
+          description: Команда успешно отправлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+              example:
+                device_id: 1
+                command: "set_temperature"
+                status: "executed"
+                timestamp: "2025-02-01T14:30:00Z"
+        '400':
+          description: Некорректная команда
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unknown command: invalid_cmd"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    DeviceType:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор типа
+        name:
+          type: string
+          description: Название типа (Отопление, Освещение, Ворота, Камера)
+        description:
+          type: string
+          description: Описание типа устройства
+        protocol:
+          type: string
+          description: Протокол связи (MQTT, HTTP, Zigbee)
+        config_schema:
+          type: object
+          description: JSON-схема конфигурации для данного типа устройств
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор устройства
+        device_type_id:
+          type: integer
+          description: Идентификатор типа устройства
+        house_id:
+          type: integer
+          description: Идентификатор дома
+        serial_number:
+          type: string
+          description: Серийный номер устройства
+        name:
+          type: string
+          description: Название устройства
+        status:
+          type: string
+          enum: [active, inactive, error]
+          description: Текущее состояние устройства
+        config:
+          type: object
+          description: Конфигурация устройства (зависит от типа)
+        created_at:
+          type: string
+          format: date-time
+          description: Дата регистрации
+
+    DeviceCreate:
+      type: object
+      required:
+        - device_type_id
+        - house_id
+        - serial_number
+        - name
+      properties:
+        device_type_id:
+          type: integer
+        house_id:
+          type: integer
+        serial_number:
+          type: string
+        name:
+          type: string
+        config:
+          type: object
+
+    DeviceStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [active, inactive, error]
+
+    DeviceCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Название команды (set_temperature, turn_on, turn_off, open, close)
+        parameters:
+          type: object
+          description: Параметры команды
+
+    CommandResult:
+      type: object
+      properties:
+        device_id:
+          type: integer
+        command:
+          type: string
+        status:
+          type: string
+          enum: [executed, queued, failed]
+        timestamp:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Описание ошибки

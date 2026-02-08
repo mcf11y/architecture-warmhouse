@@ -71,7 +71,7 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-[Диграма контекста системы](docs/c4-context.puml)
+[Диаграмма контекста системы](schemas/c4_diagrams/context_as_is.puml)
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -89,37 +89,58 @@
 
 **Диаграмма контейнеров (Containers)**
 
-[Диаграмма контейнеров](docs/c4-containers.puml)
+[Диаграмма контейнеров](schemas/c4_diagrams/containers.puml)
 
 **Диаграмма компонентов (Components)**
 
-- **[Device Service](docs/c4-components-device.puml)** — API Controller, Device Registry, Device Command Handler, Device Type Plugin Manager, Event Publisher, Device Repository.
+- **[Device Service](schemas/c4_diagrams/components-device.puml)** — API Controller, Device Registry, Device Command Handler, Device Type Plugin Manager, Event Publisher, Device Repository.
 
-- **[Telemetry Service](docs/c4-components-telemetry.puml)** — API Controller, Telemetry Collector, Telemetry Storage, Event Publisher.
+- **[Telemetry Service](schemas/c4_diagrams/components-telemetry.puml)** — API Controller, Telemetry Collector, Telemetry Storage, Event Publisher.
 
-- **[User Service](docs/c4-components-user.puml)** — API Controller, Auth Handler, User Manager, User Repository.
+- **[User Service](schemas/c4_diagrams/components-user.puml)** — API Controller, Auth Handler, User Manager, User Repository.
 
-- **[Scenario Service](docs/c4-components-scenario.puml)** — API Controller, Rule Engine, Scenario Manager, Event Consumer, Event Publisher, Scenario Repository.
+- **[Scenario Service](schemas/c4_diagrams/components-scenario.puml)** — API Controller, Rule Engine, Scenario Manager, Event Consumer, Event Publisher, Scenario Repository.
 
-- **[Notification Service](docs/c4-components-notification.puml)** — API Controller, Event Consumer, Notification Manager, Notification Sender, Notification Repository.
+- **[Notification Service](schemas/c4_diagrams/components-notification.puml)** — API Controller, Event Consumer, Notification Manager, Notification Sender, Notification Repository.
 
 **Диаграмма кода (Code)**
 
-[Device Service — диаграмма кода](docs/c4-code-device.puml)
+[Device Service — диаграмма кода](schemas/c4_diagrams/code-device.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
-Добавьте сюда ER-диаграмму. Она должна отражать ключевые сущности системы, их атрибуты и тип связей между ними.
+ER-диаграмма отражает ключевые сущности всех 5 доменов системы, их атрибуты и связи. Сплошные линии обозначают FK внутри одной БД, пунктирные — логические межсервисные ссылки (паттерн Database per Service).
+
+**Сущности:** User, House, DeviceType, Device, TelemetryData, Scenario, ScenarioCondition, ScenarioAction, NotificationTemplate, Notification.
+
+[ER-диаграмма](schemas/er-diagram.puml)
 
 # Задание 4. Создание и документирование API
 
 ### 1. Тип API
 
-Укажите, какой тип API вы будете использовать для взаимодействия микросервисов. Объясните своё решение.
+Для взаимодействия микросервисов используются два типа API:
+
+**REST API (OpenAPI 3.0)** — для синхронного взаимодействия:
+- Запросы от API Gateway к микросервисам (управление устройствами, запрос телеметрии, CRUD-операции).
+- Межсервисные вызовы (Scenario Service -> Device Service для отправки команд при срабатывании сценария).
+- Формат данных: JSON. Версионирование: `/api/v1`. Стандартные HTTP-коды ответов.
+- Обоснование: REST — простой, широко поддерживаемый стандарт, подходящий для CRUD-операций и запросов с немедленным ответом.
+
+**AsyncAPI 2.6** — для асинхронного взаимодействия через Kafka:
+- События телеметрии (`telemetry.received`), регистрации устройств (`device.registered`), тревоги (`device.alert`), срабатывания сценариев (`scenario.triggered`).
+- Обоснование: телеметрия генерирует высокий поток данных, сценарии и уведомления не требуют немедленного ответа — асинхронная модель обеспечивает слабую связанность и устойчивость к пиковым нагрузкам.
 
 ### 2. Документация API
 
-Здесь приложите ссылки на документацию API для микросервисов, которые вы спроектировали в первой части проектной работы. Для документирования используйте Swagger/OpenAPI или AsyncAPI.
+**REST API (OpenAPI 3.0):**
+
+- [Device Service API](schemas/api/device-service.yaml) — 5 эндпоинтов: список типов устройств, получение устройства, регистрация, обновление статуса, отправка команды.
+- [Telemetry Service API](schemas/api/telemetry-service.yaml) — получение телеметрии устройства с фильтрацией по времени.
+
+**Асинхронное API (AsyncAPI 2.6):**
+
+- [Async API — события Kafka](schemas/api/async-api.yaml) — каналы: `telemetry.received`, `device.registered`, `device.alert`, `scenario.triggered`.
 
 # Задание 5. Работа с docker и docker-compose
 
@@ -175,5 +196,3 @@ Locations - название комнаты, sensorId - идентификато
 Должно при каждом вызове отображаться разное значение температуры
 
 Ревьюер будет проверять точно так же.
-
-
