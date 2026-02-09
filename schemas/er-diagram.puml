@@ -14,11 +14,22 @@ entity "User" as user {
 entity "House" as house {
     * id : SERIAL <<PK>>
     --
-    * user_id : INT <<FK>>
     * address : VARCHAR(255)
     * name : VARCHAR(100)
     * created_at : TIMESTAMPTZ
 }
+
+entity "UserHouse" as user_house {
+    * user_id : INT <<FK>>
+    * house_id : INT <<FK>>
+    --
+    * role : VARCHAR(20)
+    * created_at : TIMESTAMPTZ
+}
+
+note right of user_house::role
+  owner | member
+end note
 
 entity "DeviceType" as device_type {
     * id : SERIAL <<PK>>
@@ -120,7 +131,8 @@ note right of notification::user_id
   (межсервисная, не FK)
 end note
 
-user ||--o{ house : "владеет"
+user ||--o{ user_house : "участвует"
+house ||--o{ user_house : "доступен"
 
 device_type ||--o{ device : "определяет тип"
 

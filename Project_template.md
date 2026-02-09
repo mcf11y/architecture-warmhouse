@@ -111,7 +111,7 @@
 
 ER-диаграмма отражает ключевые сущности всех 5 доменов системы, их атрибуты и связи. Сплошные линии обозначают FK внутри одной БД, пунктирные — логические межсервисные ссылки (паттерн Database per Service).
 
-**Сущности:** User, House, DeviceType, Device, TelemetryData, Scenario, ScenarioCondition, ScenarioAction, NotificationTemplate, Notification.
+**Сущности:** User, House, UserHouse, DeviceType, Device, TelemetryData, Scenario, ScenarioCondition, ScenarioAction, NotificationTemplate, Notification.
 
 [ER-диаграмма](schemas/er-diagram.puml)
 
