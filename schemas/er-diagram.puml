@@ -1,0 +1,149 @@
+@startuml
+title ER-диаграмма экосистемы «Тёплый дом»
+
+entity "User" as user {
+    * id : SERIAL <<PK>>
+    --
+    * email : VARCHAR(255) <<unique>>
+    * password_hash : VARCHAR(255)
+    * name : VARCHAR(100)
+    * role : VARCHAR(20)
+    * created_at : TIMESTAMPTZ
+}
+
+entity "House" as house {
+    * id : SERIAL <<PK>>
+    --
+    * address : VARCHAR(255)
+    * name : VARCHAR(100)
+    * created_at : TIMESTAMPTZ
+}
+
+entity "UserHouse" as user_house {
+    * user_id : INT <<FK>>
+    * house_id : INT <<FK>>
+    --
+    * role : VARCHAR(20)
+    * created_at : TIMESTAMPTZ
+}
+
+note right of user_house::role
+  owner | member
+end note
+
+entity "DeviceType" as device_type {
+    * id : SERIAL <<PK>>
+    --
+    * name : VARCHAR(100)
+    * description : TEXT
+    * protocol : VARCHAR(50)
+    * config_schema : JSONB
+}
+
+entity "Device" as device {
+    * id : SERIAL <<PK>>
+    --
+    * device_type_id : INT <<FK>>
+    * house_id : INT
+    * serial_number : VARCHAR(100) <<unique>>
+    * name : VARCHAR(100)
+    * status : VARCHAR(20)
+    * config : JSONB
+    * created_at : TIMESTAMPTZ
+}
+
+note right of device::house_id
+  Логическая ссылка на House
+  (межсервисная, не FK)
+end note
+
+entity "TelemetryData" as telemetry {
+    * id : BIGSERIAL <<PK>>
+    --
+    * device_id : INT
+    * timestamp : TIMESTAMPTZ
+    * value : DOUBLE PRECISION
+    * unit : VARCHAR(20)
+    * metadata : JSONB
+}
+
+note right of telemetry::device_id
+  Логическая ссылка на Device
+  (межсервисная, не FK)
+end note
+
+entity "Scenario" as scenario {
+    * id : SERIAL <<PK>>
+    --
+    * user_id : INT
+    * house_id : INT
+    * name : VARCHAR(100)
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMPTZ
+}
+
+note right of scenario::user_id
+  Логические ссылки на User и House
+  (межсервисные, не FK)
+end note
+
+entity "ScenarioCondition" as condition {
+    * id : SERIAL <<PK>>
+    --
+    * scenario_id : INT <<FK>>
+    * device_id : INT
+    * parameter : VARCHAR(50)
+    * operator : VARCHAR(10)
+    * value : VARCHAR(100)
+}
+
+entity "ScenarioAction" as action {
+    * id : SERIAL <<PK>>
+    --
+    * scenario_id : INT <<FK>>
+    * device_id : INT
+    * command : VARCHAR(50)
+    * parameters : JSONB
+}
+
+entity "NotificationTemplate" as template {
+    * id : SERIAL <<PK>>
+    --
+    * event_type : VARCHAR(50)
+    * channel : VARCHAR(20)
+    * subject : VARCHAR(255)
+    * body_template : TEXT
+}
+
+entity "Notification" as notification {
+    * id : SERIAL <<PK>>
+    --
+    * user_id : INT
+    * template_id : INT <<FK>>
+    * channel : VARCHAR(20)
+    * status : VARCHAR(20)
+    * sent_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+}
+
+note right of notification::user_id
+  Логическая ссылка на User
+  (межсервисная, не FK)
+end note
+
+user ||--o{ user_house : "участвует"
+house ||--o{ user_house : "доступен"
+
+device_type ||--o{ device : "определяет тип"
+
+scenario ||--o{ condition : "содержит условия"
+scenario ||--o{ action : "содержит действия"
+
+template ||--o{ notification : "используется"
+
+house ..o{ device : "house_id"
+device ..o{ telemetry : "device_id"
+user ..o{ scenario : "user_id"
+user ..o{ notification : "user_id"
+
+@enduml

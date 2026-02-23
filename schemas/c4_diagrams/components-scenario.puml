@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма компонентов — Scenario Service
+
+Container_Boundary(scenario_service, "Scenario Service") {
+
+    Component(api_controller, "API Controller", "Go / Gin", "Обрабатывает HTTP-запросы: CRUD сценариев, просмотр истории срабатываний.")
+    Component(rule_engine, "Rule Engine", "Go", "Движок правил. Оценивает условия сценариев при получении событий телеметрии.")
+    Component(scenario_manager, "Scenario Manager", "Go", "Бизнес-логика управления сценариями: создание, валидация, активация/деактивация.")
+    Component(event_consumer, "Event Consumer", "Go", "Подписан на события telemetry.received из Message Broker. Передаёт данные в Rule Engine.")
+    Component(event_publisher, "Event Publisher", "Go", "Публикует событие scenario.triggered при срабатывании сценария.")
+    Component(scenario_repo, "Scenario Repository", "Go / pgx", "Абстракция доступа к данным. CRUD-операции со сценариями и историей.")
+}
+
+ContainerDb(scenario_db, "Scenario DB", "PostgreSQL", "Сценарии, правила, триггеры, история.")
+ContainerQueue(message_broker, "Message Broker", "Kafka", "Асинхронный обмен событиями.")
+Container(api_gateway, "API Gateway", "Nginx / Kong", "Маршрутизация запросов.")
+Container(device_service, "Device Service", "Go", "Сервис управления устройствами.")
+
+Rel(api_controller, scenario_manager, "CRUD сценариев")
+Rel(scenario_manager, scenario_repo, "Сохранение / чтение")
+Rel(event_consumer, rule_engine, "Передаёт данные телеметрии")
+Rel(rule_engine, scenario_repo, "Загружает активные сценарии")
+Rel(rule_engine, event_publisher, "Сценарий сработал")
+
+Rel(api_gateway, api_controller, "REST-запросы", "HTTP")
+Rel(message_broker, event_consumer, "Событие telemetry.received", "async")
+Rel(event_publisher, message_broker, "Событие scenario.triggered", "async")
+Rel(rule_engine, device_service, "Отправка команды устройству", "REST")
+Rel(scenario_repo, scenario_db, "SQL-запросы", "SQL/TCP")
+
+@enduml

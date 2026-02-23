@@ -1,0 +1,196 @@
+asyncapi: 2.6.0
+info:
+  title: Тёплый дом — Асинхронные события
+  description: AsyncAPI-спецификация событий, передаваемых через Kafka между микросервисами экосистемы «Тёплый дом».
+  version: 1.0.0
+
+servers:
+  development:
+    url: localhost:9092
+    protocol: kafka
+    description: Development Kafka broker
+
+channels:
+  telemetry.received:
+    description: Событие о получении новых данных телеметрии с устройства. Публикуется Telemetry Service. Потребители — Scenario Service.
+    publish:
+      operationId: publishTelemetryReceived
+      summary: Новые данные телеметрии получены
+      message:
+        name: TelemetryReceived
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - device_id
+            - timestamp
+            - value
+            - unit
+          properties:
+            device_id:
+              type: integer
+              description: Идентификатор устройства
+            timestamp:
+              type: string
+              format: date-time
+              description: Время измерения
+            value:
+              type: number
+              format: double
+              description: Значение измерения
+            unit:
+              type: string
+              description: Единица измерения
+            metadata:
+              type: object
+              description: Дополнительные данные
+        examples:
+          - payload:
+              device_id: 1
+              timestamp: "2025-01-15T10:00:00Z"
+              value: 21.5
+              unit: "°C"
+              metadata:
+                location: "Living Room"
+                sensor_type: "temperature"
+
+  device.registered:
+    description: Событие о регистрации нового устройства в системе. Публикуется Device Service.
+    publish:
+      operationId: publishDeviceRegistered
+      summary: Новое устройство зарегистрировано
+      message:
+        name: DeviceRegistered
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - device_id
+            - device_type
+            - house_id
+            - serial_number
+            - timestamp
+          properties:
+            device_id:
+              type: integer
+              description: Идентификатор устройства
+            device_type:
+              type: string
+              description: Тип устройства
+            house_id:
+              type: integer
+              description: Идентификатор дома
+            serial_number:
+              type: string
+              description: Серийный номер
+            timestamp:
+              type: string
+              format: date-time
+              description: Время регистрации
+        examples:
+          - payload:
+              device_id: 5
+              device_type: "heating"
+              house_id: 10
+              serial_number: "SN-HEAT-005"
+              timestamp: "2025-02-01T14:00:00Z"
+
+  device.alert:
+    description: Событие тревоги устройства (потеря связи, критическое значение). Публикуется Device Service. Потребитель — Notification Service.
+    publish:
+      operationId: publishDeviceAlert
+      summary: Тревога устройства
+      message:
+        name: DeviceAlert
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - device_id
+            - alert_type
+            - message
+            - timestamp
+          properties:
+            device_id:
+              type: integer
+              description: Идентификатор устройства
+            alert_type:
+              type: string
+              enum: [connection_lost, critical_value, malfunction]
+              description: Тип тревоги
+            message:
+              type: string
+              description: Описание тревоги
+            timestamp:
+              type: string
+              format: date-time
+              description: Время события
+        examples:
+          - payload:
+              device_id: 3
+              alert_type: "critical_value"
+              message: "Температура превысила 40°C"
+              timestamp: "2025-02-01T15:30:00Z"
+
+  scenario.triggered:
+    description: Событие срабатывания сценария автоматизации. Публикуется Scenario Service. Потребитель — Notification Service.
+    publish:
+      operationId: publishScenarioTriggered
+      summary: Сценарий автоматизации сработал
+      message:
+        name: ScenarioTriggered
+        contentType: application/json
+        payload:
+          type: object
+          required:
+            - scenario_id
+            - user_id
+            - triggered_by
+            - actions_executed
+            - timestamp
+          properties:
+            scenario_id:
+              type: integer
+              description: Идентификатор сценария
+            user_id:
+              type: integer
+              description: Идентификатор владельца сценария
+            triggered_by:
+              type: object
+              description: Условие, вызвавшее срабатывание
+              properties:
+                device_id:
+                  type: integer
+                parameter:
+                  type: string
+                value:
+                  type: number
+            actions_executed:
+              type: array
+              description: Выполненные действия
+              items:
+                type: object
+                properties:
+                  device_id:
+                    type: integer
+                  command:
+                    type: string
+                  status:
+                    type: string
+            timestamp:
+              type: string
+              format: date-time
+              description: Время срабатывания
+        examples:
+          - payload:
+              scenario_id: 1
+              user_id: 42
+              triggered_by:
+                device_id: 1
+                parameter: "temperature"
+                value: 17.5
+              actions_executed:
+                - device_id: 2
+                  command: "turn_on"
+                  status: "executed"
+              timestamp: "2025-02-01T16:00:00Z"

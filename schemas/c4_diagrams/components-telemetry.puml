@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма компонентов — Telemetry Service
+
+Container_Boundary(telemetry_service, "Telemetry Service") {
+
+    Component(api_controller, "API Controller", "Go / Gin", "Обрабатывает HTTP-запросы: получение текущих показаний, исторических данных, агрегатов.")
+    Component(telemetry_collector, "Telemetry Collector", "Go", "Принимает данные телеметрии от устройств. Валидация, нормализация показаний.")
+    Component(telemetry_storage, "Telemetry Storage", "Go / pgx", "Запись и чтение временных рядов. Агрегация данных за период.")
+    Component(event_publisher, "Event Publisher", "Go", "Публикует события telemetry.received в Message Broker для реакции сценариев.")
+}
+
+ContainerDb(telemetry_db, "Telemetry DB", "TimescaleDB", "Временные ряды телеметрии.")
+ContainerQueue(message_broker, "Message Broker", "Kafka", "Асинхронный обмен событиями.")
+System_Ext(iot_devices, "IoT-устройства", "Датчики отопления, освещения, камеры и др.")
+Container(api_gateway, "API Gateway", "Nginx / Kong", "Маршрутизация запросов.")
+
+Rel(telemetry_collector, telemetry_storage, "Сохранение показаний")
+Rel(telemetry_collector, event_publisher, "Событие telemetry.received")
+Rel(api_controller, telemetry_storage, "Запрос данных")
+
+Rel(api_gateway, api_controller, "REST-запросы", "HTTP")
+Rel(iot_devices, telemetry_collector, "Отправка показаний", "MQTT/HTTP")
+Rel(telemetry_storage, telemetry_db, "SQL-запросы", "SQL/TCP")
+Rel(event_publisher, message_broker, "Публикация событий", "async")
+
+@enduml

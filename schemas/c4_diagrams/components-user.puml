@@ -1,0 +1,28 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма компонентов — User Service
+
+Container_Boundary(user_service, "User Service") {
+
+    Component(api_controller, "API Controller", "Go / Gin", "Обрабатывает HTTP-запросы: регистрация, логин, профиль, управление домами.")
+    Component(auth_handler, "Auth Handler", "Go", "Аутентификация пользователей. Генерация и валидация JWT-токенов.")
+    Component(user_manager, "User Manager", "Go", "Бизнес-логика управления профилями пользователей и привязкой домов.")
+    Component(user_repo, "User Repository", "Go / pgx", "Абстракция доступа к данным. CRUD-операции с пользователями и домами.")
+}
+
+ContainerDb(user_db, "User DB", "PostgreSQL", "Пользователи, дома, роли.")
+Container(api_gateway, "API Gateway", "Nginx / Kong", "Маршрутизация запросов, проверка токенов.")
+
+Rel(api_controller, auth_handler, "Логин / регистрация")
+Rel(api_controller, user_manager, "Профили / дома")
+Rel(auth_handler, user_repo, "Проверка учётных данных")
+Rel(user_manager, user_repo, "Сохранение / чтение")
+
+Rel(api_gateway, api_controller, "REST-запросы", "HTTP")
+Rel(user_repo, user_db, "SQL-запросы", "SQL/TCP")
+Rel(api_gateway, auth_handler, "Валидация JWT", "HTTP")
+
+@enduml

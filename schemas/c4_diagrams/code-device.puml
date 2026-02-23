@@ -1,0 +1,123 @@
+@startuml
+title Диаграмма классов — Device Service (уровень Code)
+
+interface DeviceType {
+    +GetTypeName(): string
+    +GetSupportedCommands(): []Command
+    +ValidateConfig(config: map): error
+    +FormatCommand(cmd: Command): []byte
+}
+
+class HeatingDevice {
+    +GetTypeName(): string
+    +GetSupportedCommands(): []Command
+    +ValidateConfig(config: map): error
+    +FormatCommand(cmd: Command): []byte
+}
+
+class LightingDevice {
+    +GetTypeName(): string
+    +GetSupportedCommands(): []Command
+    +ValidateConfig(config: map): error
+    +FormatCommand(cmd: Command): []byte
+}
+
+class GateDevice {
+    +GetTypeName(): string
+    +GetSupportedCommands(): []Command
+    +ValidateConfig(config: map): error
+    +FormatCommand(cmd: Command): []byte
+}
+
+class CameraDevice {
+    +GetTypeName(): string
+    +GetSupportedCommands(): []Command
+    +ValidateConfig(config: map): error
+    +FormatCommand(cmd: Command): []byte
+}
+
+class Device {
+    +ID: int
+    +Name: string
+    +TypeName: string
+    +Location: string
+    +Status: string
+    +Config: map
+    +UserID: int
+    +CreatedAt: time.Time
+    +UpdatedAt: time.Time
+}
+
+class Command {
+    +Name: string
+    +Parameters: map
+}
+
+interface DeviceRepository {
+    +GetAll(ctx: context, userID: int): []Device
+    +GetByID(ctx: context, id: int): Device
+    +Create(ctx: context, device: Device): Device
+    +Update(ctx: context, id: int, device: Device): Device
+    +Delete(ctx: context, id: int): error
+}
+
+class DevicePostgresRepository {
+    -pool: pgxpool.Pool
+    +GetAll(ctx: context, userID: int): []Device
+    +GetByID(ctx: context, id: int): Device
+    +Create(ctx: context, device: Device): Device
+    +Update(ctx: context, id: int, device: Device): Device
+    +Delete(ctx: context, id: int): error
+}
+
+class DevicePluginManager {
+    -plugins: map[string]DeviceType
+    +Register(plugin: DeviceType)
+    +GetPlugin(typeName: string): DeviceType
+    +ListTypes(): []string
+}
+
+class DeviceCommandHandler {
+    -pluginManager: DevicePluginManager
+    -publisher: EventPublisher
+    +HandleCommand(device: Device, cmd: Command): error
+}
+
+class DeviceRegistry {
+    -repo: DeviceRepository
+    -pluginManager: DevicePluginManager
+    -publisher: EventPublisher
+    +RegisterDevice(device: Device): Device
+    +GetDevice(id: int): Device
+    +ListDevices(userID: int): []Device
+    +UpdateDevice(id: int, device: Device): Device
+    +RemoveDevice(id: int): error
+}
+
+interface EventPublisher {
+    +Publish(topic: string, event: any): error
+}
+
+class KafkaEventPublisher {
+    -producer: KafkaProducer
+    +Publish(topic: string, event: any): error
+}
+
+' Наследование / реализация
+DeviceType <|.. HeatingDevice
+DeviceType <|.. LightingDevice
+DeviceType <|.. GateDevice
+DeviceType <|.. CameraDevice
+DeviceRepository <|.. DevicePostgresRepository
+EventPublisher <|.. KafkaEventPublisher
+
+' Зависимости
+DevicePluginManager --> DeviceType : manages
+DeviceCommandHandler --> DevicePluginManager : uses
+DeviceCommandHandler --> EventPublisher : publishes events
+DeviceRegistry --> DeviceRepository : persists
+DeviceRegistry --> DevicePluginManager : validates type
+DeviceRegistry --> EventPublisher : publishes events
+Device --> Command : receives
+
+@enduml

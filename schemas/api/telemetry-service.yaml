@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  description: API для получения данных телеметрии экосистемы «Тёплый дом»
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Development server
+
+paths:
+  /telemetry/{deviceId}:
+    get:
+      summary: Получение телеметрии устройства
+      description: Возвращает данные телеметрии для указанного устройства с возможностью фильтрации по временному диапазону.
+      operationId: getDeviceTelemetry
+      tags:
+        - Telemetry
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор устройства
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Начало временного диапазона (ISO 8601)
+          example: "2025-01-01T00:00:00Z"
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Конец временного диапазона (ISO 8601)
+          example: "2025-01-31T23:59:59Z"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+          description: Максимальное количество записей
+      responses:
+        '200':
+          description: Данные телеметрии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: integer
+                  count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryRecord'
+              example:
+                device_id: 1
+                count: 3
+                data:
+                  - id: 1001
+                    device_id: 1
+                    timestamp: "2025-01-15T10:00:00Z"
+                    value: 21.5
+                    unit: "°C"
+                    metadata:
+                      location: "Living Room"
+                  - id: 1002
+                    device_id: 1
+                    timestamp: "2025-01-15T10:05:00Z"
+                    value: 21.8
+                    unit: "°C"
+                    metadata:
+                      location: "Living Room"
+                  - id: 1003
+                    device_id: 1
+                    timestamp: "2025-01-15T10:10:00Z"
+                    value: 22.1
+                    unit: "°C"
+                    metadata:
+                      location: "Living Room"
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid date format for 'from' parameter"
+        '404':
+          description: Данные телеметрии для устройства не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "No telemetry data found for device 999"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    TelemetryRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор записи
+        device_id:
+          type: integer
+          description: Идентификатор устройства
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+        value:
+          type: number
+          format: double
+          description: Значение измерения
+        unit:
+          type: string
+          description: Единица измерения
+        metadata:
+          type: object
+          description: Дополнительные данные
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Описание ошибки
